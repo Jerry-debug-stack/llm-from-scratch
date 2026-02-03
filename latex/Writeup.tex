@@ -1,0 +1,317 @@
+\documentclass[a4paper,11pt]{article}
+%\usepackage[utf8]{inputenc}
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{ctex}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{listings}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+% 设置样式
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    language=Python
+}
+
+\lstset{style=mystyle}
+
+\begin{document}
+    \title{作业一}
+    \author{Jerry(2500011484)}
+    \date{\today}
+    \maketitle
+    \section{Unicode}
+        \subsection{Problem : Unicode1}
+            \begin{itemize}
+                \item 1. \verb|'\x00'|
+                \item 2. print 的结果为"",string representation使用转义符号表示
+                \item 3. python print时直接忽略这个字符,在string representation中仍然以\verb|'\x00'|存在
+            \end{itemize}
+        \subsection{Problem : Unicode2}
+            \begin{itemize}
+                \item 1. UTF-8将unicode转为\verb|uin8_t|序列,词汇表大小为256,比UTF-16和UTF-32更小
+                \item 2. "你好" 
+                    \par 解释:因为这个函数是对utf-8编码逐字解码,对于utf-8中的多字符编码(ascii以外),会进行无效的解码
+                \item 3. 0xffff 对于utf-8,这是长度为二的项,要求其字符一的第六七位为1,第五位为0,然而0xffff的第五位为1
+            \end{itemize}    
+    \section{BPE}
+        \subsection{Problem : BPE Training on TinyStories}
+            \begin{itemize}
+                \item 1.(单线程)
+                    \par 执行时间: 392.0504 秒
+                    \par 最大内存使用: 110.32 MB
+                \item 2.pre-tokenization过程
+                \item 3.最长token:" accomplishment",是最长的单词
+            \end{itemize}
+        \subsection{Problem : BPE Training on OpenWebText}
+            \begin{itemize}
+                \item 1.(单线程)
+                    \par 执行时间: 26135.2360 秒
+                    \par 最大内存使用: 10959.24 MB (Linux)
+                \item 2.最长token:'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ'(文中最长的"词")
+                \item 3.有更多的词汇
+            \end{itemize}
+        \subsection{Problem : Experiments with tokenizers}
+            \begin{itemize}
+                \item 1. 压缩率
+                    \par TinyStories:4.36
+                    \par OpenWebText:4.32
+                \item 2.压缩率会下降,甚至小于1(由于不匹配导致必须使用前256个vocab)
+                \item 3.速度在$8\times10^{4}$到$1\times10^{5}$(bytes/second),保守估计需要412.5小时(不会多线程)
+                \item 4.其一大于32000,其二是2个字节对齐
+            \end{itemize}
+    \section{Full Transformer LM}
+        \subsection{Problem : Transformer LM resource accounting}
+            \begin{itemize}
+                \item 1.大约共15.57亿个参数,内存占用约5.8GB
+                \item 2.大约$3.5\times 10^{12}$FLOPS
+                    \par \qquad (1).每个Transformer层（共48层）
+                    \par \qquad 自注意力模块:
+                    \par \qquad \qquad $Q$,$K$,$V$投影：将输入 $X$分别乘以权重矩阵 $W_Q,W_K,W_V$，得到 $Q$,$K$,$V$。
+                    \par \qquad \qquad FLOPs:$6\times n\times d^2$
+                    \par \qquad \qquad 注意力分数计算：每个头的 $Q_i$与 $K_i^T$相乘，得到注意力分数矩阵。
+                    \par \qquad \qquad FLOPs:$2\times n^2\times d$（所有头合计，$d=h\times d_k$）。
+                    \par \qquad \qquad 注意力加权和：每个头的注意力权重矩阵与$V_i$相乘。
+                    \par \qquad \qquad FLOPs:$2\times n^2 \times d$（所有头合计）。
+                    \par \qquad \qquad 输出投影：多头输出拼接后乘以权重矩阵 $W_O$。
+                    \par \qquad \qquad FLOPs:$2\times n\times d^2$。
+                    \par \qquad 前馈网络（FFN）模块：
+                    \par \qquad \qquad 第一个线性层：输入乘以权重 $W_1$。
+                    \par \qquad \qquad FLOPs:$2\times n\times d\times d_ff$。
+                    \par \qquad \qquad  第二个线性层：中间激活乘以权重 $W_2$。
+                    \par \qquad \qquad  FLOPs:$2\times n\times d_ff\times d$。
+                    \par \qquad 每个Transformer层的矩阵乘法总FLOPs为：
+                    \par \qquad $(8\times n\times d^2)+(4\times n^2 \times d) + (4 \times n \times d \times d_ff)$
+                    \par \qquad (2). 输出层（语言模型头）
+                    \par \qquad \qquad  词表投影：最后一层隐藏状态乘以输出权重矩阵 $W_out$。
+                    \par \qquad \qquad  FLOPs:$2\times n\times d\times vocab_size$。
+                \item 3.每个Transformer层中的前馈网络（FFN）
+                \item 4.随着模型尺寸增加，前馈网络（FFN）的FLOPs占比显著上升（从小型到大型：$39.76\%\to 49.85\%\to 54.46\%$），
+                而自注意力核心计算（$QK^T$和$AV$）和输出层的占比下降（自注意力核心：$13.25\%\to 12.46\%\to 10.89\%$；输出层：$27.10\%\to 12.75\%\to 7.42\%$）。
+                这是因为FFN的计算量随$d_{model}$的平方增长，而自注意力核心计算仅随$d_{model}$线性增长，导致前者占主导。
+                \item 5.当GPT-2 XL的上下文长度从1024增加到16384时，总FLOPs从约$3.507\times 10^{12}$增加到约$1.334\times 10^{14}$。
+                模型各部分的FLOPs贡献比例发生显著变化：自注意力核心计算（$QK^T$和$AV$）的占比从$9.19\%$急剧上升到$61.81\%$，成为主要计算瓶颈；
+                前馈网络（FFN）的占比从$57.42\%$下降到$24.14\%$；线性投影部分占比从$28.71\%$下降到$12.07\%$；输出层占比从$4.70\%$下降到$1.98\%$
+
+            \end{itemize}
+    \section{Optimizer}
+        \subsection{Problem : Tuning the learning rate}
+            \par 1e1训练较为缓慢(10iteration导致loss降低到4)
+            \par 1e2训练快:10iteration loss 降低到$10^{-23}$量级
+            \par 1e3训练导致发散(步长过大)
+        \subsection{Problem : Resource accounting for training with AdamW}
+            \begin{itemize}
+                \item 1.
+                    \begin{align}
+                        B &= \mbox{batch\_size} \\
+                        V &= \mbox{vocab\_size} \\
+                        L &= \mbox{context\_length} \\
+                        N &= \mbox{num\_layers} \\
+                        D &= \mbox{d\_model} \\
+                        H &= \mbox{num\_heads} \\
+                        d_{ff} &=4D
+                    \end{align}
+                    \begin{enumerate}[leftmargin=1cm]
+                        \item 参数数量:
+                            \begin{enumerate}[leftmargin=1cm]
+                                \item Input embedding: $VD$
+                                \item m-head: $VD$
+                                \item 每层 Transformer（权重矩阵部分）：
+                                    \begin{enumerate}[leftmargin=1cm]
+                                        \item Q,K,V 投影：$3D^2$
+                                        \item attention output projection：$D^2$
+                                        \item FFN W1：$4D^2$
+                                        \item FFN W2：$4D^2$
+                                    \end{enumerate}
+                                \item 每层 RMSNorm 参数：$2D$
+                                \item final RMSNorm（层外）：$D$
+                                \item 总体参数量（float 数）：
+                                    $$P=2VD + 12ND^2+(2N+1)D$$
+                                \item 字节数：
+                                    $$ \mbox{Params\_bytes}=4\cdot P=4(2VD+12ND^2+(2N+1)D) $$
+                            \end{enumerate}
+                        \item 激活
+                            \begin{enumerate}[leftmargin=1cm]
+                                \item RMSNorm(s)： $2 \cdot (B L D)$
+                                \item Multi-head attention：
+                                \begin{enumerate}[leftmargin=1cm]
+                                    \item Q,K,V 投影输出： $3 \cdot (B L D)$
+                                    \item QK 矩阵乘积： $B \cdot H \cdot L \cdot L$
+                                    \item softmax 后权重： $B \cdot H \cdot L \cdot L$
+                                    \item attention 加权和： $B L D$
+                                    \item output projection 后： $B L D$
+                                \end{enumerate}
+                                \item Position-wise FFN：
+                                \begin{enumerate}[leftmargin=1cm]
+                                    \item W1 输出: $B L (4D)$
+                                    \item SiLU 激活: $B L (4D)$
+                                    \item W2 输出: $B L D$
+                                    \item final RMSNorm： (B L D)
+                                \end{enumerate}
+                                \item output embedding： $B L V$
+                                \item cross-entropy on logits 保守计为 $B L V$
+                                \item 激活总浮点数：
+                                    $$A=BL((16N+1)D+2V)+2NBHL^2$$
+                                \item 对应字节数：
+                                    $$\mbox{Activations\_bytes}=4\cdot A=4(BL((16N+1)D+2V)+2NBHL^2)$$
+                            \end{enumerate}
+                        \item 梯度 
+                            $$\mbox{Gradients\_bytes} = 4\cdot P$$
+                        \item 优化器状态（AdamW）
+                            $$\mbox{OpttState\_bytes} = 2\cdot(4\cdot P)=8\cdot P$$
+                        \item 峰值总内存
+                            $$16(2VD+12ND^2+(2N+1)D)+4(BL((16N+1)D)+2V)+2NBHL^2$$
+                    \end{enumerate}
+                \item 2.
+                    \par $\mbox{Memory}(K)=(5.44k + 105.2)GB$
+                    \par 最大batch size为0
+                \item 3.
+                    \verb|FLOPs/step|约为$6BLN(12D^2)$
+                \item 4.训练时间约为440days
+            \end{itemize}
+    \section{Experiment}
+        \begin{lstlisting}[language=python]
+self.lm_head.weight = self.token_embeddings.weight\end{lstlisting}
+        我在实际训练中将\verb|lm_head|与\verb|token_embedding|共享了权重
+        \subsection{Problem : Experiment logging}
+            \begin{lstlisting}[language=python]
+print(
+    f"epoch {epoch + 1} | "
+    f"val loss {check_loss.item():.4f} | "
+    f"std {check_logits.std().item():.4f} | "
+    f"lr {current_lr:.2e}"
+)
+batch_time_loss_list.append([
+    epoch,
+    datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    check_loss.item()
+])
+            \end{lstlisting}
+        \subsection{Problem : Tune the learning rate}
+            \begin{itemize}
+                \item 1
+                    \begin{figure}[H]
+                        \centering
+                        \includegraphics[width=0.6\textwidth]{pngs/tunning_learning_rate.png}
+                        \caption{tunning learning rate}
+                    \end{figure}
+                    显然从图中来看\verb|max_lr|越大,那么warmup段的斜率越大(还没有到达发散的临界点时)
+                \item 2
+                    可以推断:在进入发散lr的领域之前,lr越大越优秀
+            \end{itemize}
+        \subsection{Problem : Batch size variations}
+            \begin{figure}[H]
+                \centering
+                \begin{subfigure}[b]{0.32\textwidth}
+                    \centering
+                    \includegraphics[width=\textwidth]{pngs/train_loss_batch_64.png}
+                    \caption{Batch size = 64}
+                    \label{fig:loss_bs64}
+                \end{subfigure}
+                \hfill
+                \begin{subfigure}[b]{0.32\textwidth}
+                    \centering
+                    \includegraphics[width=\textwidth]{pngs/train_loss_batch_128.png}
+                    \caption{Batch size = 128}
+                    \label{fig:loss_bs128}
+                \end{subfigure}
+                \hfill
+                \begin{subfigure}[b]{0.32\textwidth}
+                    \centering
+                    \includegraphics[width=\textwidth]{pngs/train_loss_batch_256.png}
+                    \caption{Batch size = 256}
+                    \label{fig:loss_bs256}
+                \end{subfigure}
+            
+                \caption{不同 batch size 下的训练损失曲线（已平滑）}
+                \label{fig:batchsize_comparison}
+            \end{figure}
+            较小的 batch size虽然损失曲线波动较大，但在训练初期收敛速度更快（相对的，按百分比计算）。
+            \par 较大的 batch size曲线更平滑（最后的部分），但达到相似的损失值可能需要更多的训练轮次。
+            \par 较大的 batch size 可以减少梯度估计的方差，使损失曲线更加平稳。
+            \par 增加 batch size 通常需要相应增大学习率,调整学习率，保证训练量（total tokens processed）相同的情况下，三种 batch size 最终都可以达到相似的损失值。
+        \subsection{Problem : Generate text}
+            贴一段generate出来的文本:
+            \par Prompt : hello my friend!
+            \par Reply : Can I play with you?" The cat smiled and said, "Yes, let's play together!"
+As they played, the cat and the dog found a big box. They didn't know what was inside. They decided to open it. Inside the box, they found a big cake. The cat and the dog were very surprised. They wanted to eat the cake, but they didn't know how to share.
+Just then, a little bird flew down and said, "I can help you open the box." The cat and the dog were happy. They opened the box, and there was a big cake inside. The cat
+            \par 设置的参数:
+            $$\begin{aligned}
+                &temperature &= 0.8 \\
+                &top\_k &= 10\\
+                &max\_new\_tokens &= 128
+            \end{aligned}$$
+        \subsection{Problem : Remove RMSNorm and train}
+            \begin{figure}[H]
+                \centering
+                \includegraphics[width=0.6\textwidth]{pngs/rms_curve.png}
+                \caption{rms curve}
+            \end{figure}
+            没有rms,只能采用非常保守的lr,甚至需要让cos schedule在800轮就到达\verb|min_lr|,进而导致收敛缓慢
+        \subsection{Problem : Implement post-norm and train}
+            \begin{figure}[H]
+                \centering
+                \includegraphics[width=0.6\textwidth]{pngs/post_norm_curve.png}
+                \caption{post norm curve}
+            \end{figure}
+            pre-norm的版本下降速度更快,收敛至更小的loss
+        \subsection{Problem : Implement NoPE}
+            \begin{figure}[H]
+                \centering
+                \includegraphics[width=0.6\textwidth]{pngs/NoPE_curve.png}
+                \caption{NoPE curve}
+            \end{figure}
+            RoPE更好,不过在tiny story的训练上,这种差距并不明显,但是再open web text上,长程信息很重要时,这种差距就会增大了。
+        \subsection{Problem : SwiGLU vs. SiLU}
+            \begin{figure}[H]
+                \centering
+                \includegraphics[width=0.6\textwidth]{pngs/silu.png}
+                \caption{SiLU curve}
+            \end{figure}
+            很显然,SwiGLU更好，下降略快，收敛值更低
+        \subsection{Leaderboard}
+            使用参数：
+            $$\begin{aligned}
+                &vocab_size &= 32000 \\
+                &context_length &= 512 \\
+                &d_model &= 512 \\
+                &num_heads &= 16 \\
+                &d_ff &= 2048 \\
+                &num_layers &= 8
+            \end{aligned}$$
+            \begin{figure}[H]
+                \centering
+                \includegraphics[width=0.6\textwidth]{pngs/owt.png}
+                \caption{open web text curve}
+            \end{figure}
+            \par 最后一轮loss为3.72
+            \par 一组输入输出：
+            \par Prompt : python
+            \par Reply : 2.6 on Windows.This may be because the CTO is looking to get a new version of the kernel and we are looking to test it out with the CTO, but the latest version of Microsoft’s code doesn’t make it easy to test it.The reason we started this article? Can we make the CTO code?Microsoft has been working hard with the CTO to get a new CTO out of the way, so there is no need to worry about us getting a new CTO and getting a new CTO. A new CTO is going to be a way to
+\end{document}
